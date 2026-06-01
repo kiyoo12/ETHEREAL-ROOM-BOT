@@ -41,15 +41,20 @@ async def on_message(message):
             
             # --- TEKNIK PEMBERSIHAN ---
             clean_title = re.sub(r'\(.*?\)', '', raw_title)
+            # Ambil artis jika ada kata " by "
+            artist_name = clean_title.split(" by ")[-1].strip() if " by " in clean_title else ""
             clean_title = clean_title.split(" by ")[0].strip()
             clean_title = clean_title.replace(" - ", " ").strip()
             
             await message.channel.send(f"Auto-Sync: {clean_title}...")
             
-            # --- PENCARIAN DENGAN FALLBACK ---
-            song = genius.search_song(clean_title)
+            # --- PENCARIAN CERDAS DENGAN FILTER ARTIS ---
+            # Cari dengan filter artis terlebih dahulu agar lebih akurat
+            song = genius.search_song(clean_title, artist=artist_name)
+            
+            # Fallback kalau masih nggak nemu
             if not song:
-                song = genius.search_song(raw_title)
+                song = genius.search_song(clean_title)
 
             if song:
                 lirik_text = song.lyrics[:2000] 
@@ -85,12 +90,13 @@ async def sync(ctx):
             if "Started playing" in search_text:
                 raw_title = search_text.split("Started playing")[-1].strip()
                 clean_title = re.sub(r'\(.*?\)', '', raw_title)
+                artist_name = clean_title.split(" by ")[-1].strip() if " by " in clean_title else ""
                 clean_title = clean_title.split(" by ")[0].strip()
                 clean_title = clean_title.replace(" - ", " ").strip()
                 
                 await ctx.send(f"Sync Manual: {clean_title}...")
-                song = genius.search_song(clean_title)
-                if not song: song = genius.search_song(raw_title)
+                song = genius.search_song(clean_title, artist=artist_name)
+                if not song: song = genius.search_song(clean_title)
                 if song:
                     lirik_text = song.lyrics[:2000] 
                     embed = discord.Embed(title=song.title, description=lirik_text, color=0x87CEEB)

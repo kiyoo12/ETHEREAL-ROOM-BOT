@@ -18,7 +18,7 @@ genius = lyricsgenius.Genius(GENIUS_TOKEN)
 
 last_played_song = ""
 
-@tasks.loop(seconds=5)
+@tasks.loop(seconds=4.5)
 async def check_music():
     global last_played_song
     channel = bot.get_channel(TARGET_CHANNEL_ID)

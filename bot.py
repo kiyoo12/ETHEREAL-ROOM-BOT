@@ -1,68 +1,57 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import lyricsgenius
 import os
 import re
 
-# --- CONFIG ---
-TOKEN = os.environ.get('DISCORD_TOKEN')
-GENIUS_TOKEN = os.environ.get('GENIUS_ACCESS_TOKEN')
-
-# Setup Intents
-intents = discord.Intents.default()
-intents.message_content = True
+# ... (Config & Setup tetap sama)
 bot = commands.Bot(command_prefix='!', intents=intents)
-
-# Setup Genius
 genius = lyricsgenius.Genius(GENIUS_TOKEN)
+
+# Variabel buat nyimpen judul lagu terakhir biar gak spam lirik yang sama
+last_played_song = ""
+
+@tasks.loop(seconds=10) # Bot bakal ngecek channel tiap 10 detik
+async def check_music():
+    global last_played_song
+    # Cari channel yang namanya mengandung "play-music"
+    channel = discord.utils.get(bot.get_all_channels(), name="play-music") # Ganti kalau nama channel lu di discord ada simbolnya!
+    # Kalo tetep gak kebaca, kita pake filter nama manual:
+    # channel = [ch for ch in bot.get_all_channels() if "play-music" in ch.name.lower()][0]
+
+    if channel:
+        async for message in channel.history(limit=5):
+            if "Jockie" in message.author.name and message.embeds:
+                embed = message.embeds[0]
+                search_text = (embed.description or "") + " " + " ".join([f.value for f in embed.fields])
+                
+                if "Started playing" in search_text:
+                    raw_title = search_text.split("Started playing")[-1].strip()
+                    clean_title = re.sub(r'\(.*?\)', '', raw_title).split(" by ")[0].strip().replace(" - ", " ").strip()
+                    
+                    # Cek apakah lagu ini udah pernah kita cari
+                    if clean_title != last_played_song:
+                        last_played_song = clean_title
+                        await channel.send(f"Auto-Sync: {clean_title}...")
+                        
+                        song = genius.search_song(clean_title, artist=(raw_title.split(" by ")[-1].strip() if " by " in raw_title else ""))
+                        if not song: song = genius.search_song(clean_title)
+                        
+                        if song:
+                            lirik_text = song.lyrics[:2000]
+                            embed = discord.Embed(title=song.title, description=lirik_text, color=0x87CEEB)
+                            embed.set_footer(text=f"Artist: {song.artist}")
+                            await channel.send(embed=embed)
+                        else:
+                            await channel.send(f"Lirik '{clean_title}' nggak ketemu.")
+                    break
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name="!lirik <judul lagu>"))
-    print(f'ETHEREAL ROOM Bot Lirik udah ON, {bot.user} siap beraksi!')
+    check_music.start() # Jalanin loop-nya pas bot nyala
+    print(f'ETHEREAL ROOM Bot Lirik udah ON!')
 
-# --- EVENT AUTO-SYNC ---
-@bot.event
-async def on_message(message):
-    # Biar bot nggak ngerespon pesannya sendiri
-    if message.author == bot.user:
-        await bot.process_commands(message)
-        return
-
-    # Cek apakah pesan dari Jockie Music dan di channel yang ngandung kata "play-music"
-    if "Jockie" in message.author.name and message.embeds and "play-music" in message.channel.name.lower():
-        embed = message.embeds[0]
-        # Ambil semua teks dari embed (deskripsi + fields)
-        search_text = (embed.description or "") + " " + " ".join([f.value for f in embed.fields])
-        
-        if "Started playing" in search_text:
-            # Ambil teks setelah "Started playing"
-            raw_title = search_text.split("Started playing")[-1].strip()
-            
-            # --- TEKNIK PEMBERSIHAN ---
-            clean_title = re.sub(r'\(.*?\)', '', raw_title)
-            # Ambil artis jika ada kata " by "
-            artist_name = clean_title.split(" by ")[-1].strip() if " by " in clean_title else ""
-            clean_title = clean_title.split(" by ")[0].strip()
-            clean_title = clean_title.replace(" - ", " ").strip()
-            
-            await message.channel.send(f"Auto-Sync: {clean_title}...")
-            
-            # --- PENCARIAN CERDAS DENGAN FILTER ARTIS ---
-            # Cari dengan filter artis terlebih dahulu agar lebih akurat
-            song = genius.search_song(clean_title, artist=artist_name)
-            
-            # Fallback kalau masih nggak nemu
-            if not song:
-                song = genius.search_song(clean_title)
-
-            if song:
-                lirik_text = song.lyrics[:2000] 
-                embed = discord.Embed(title=song.title, description=lirik_text, color=0x87CEEB)
-                embed.set_footer(text=f"Artist: {song.artist}")
-                await message.channel.send(embed=embed)
-            else:
-                await message.channel.send(f"Aduh, lirik buat '{clean_title}' nggak ketemu di Genius.")
+# ... (sisa commands tetap sama)
 
     # WAJIB: Biar command manual (!lirik dan !sync) tetep jalan
     await bot.process_commands(message)

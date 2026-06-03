@@ -9,7 +9,6 @@ TOKEN = os.environ.get('DISCORD_TOKEN')
 GENIUS_TOKEN = os.environ.get('GENIUS_ACCESS_TOKEN')
 TARGET_CHANNEL_ID = int(os.environ.get('TARGET_CHANNEL_ID', 0))
 
-# Setup Intents
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -19,39 +18,31 @@ last_played_song = ""
 
 @bot.event
 async def on_ready():
-    print(f'Bot Ethereal sudah ON dan siap beraksi secara Instan!')
+    print(f'Bot Ethereal sudah ON!')
 
 @bot.event
 async def on_message(message):
     global last_played_song
     
-    # Filter channel dan author
     if message.author.name == "Jockie Music" and message.channel.id == TARGET_CHANNEL_ID:
         if message.embeds:
             embed = message.embeds[0]
-            # Gabungin semua teks embed buat dideteksi
-            full_text = (embed.description or "") + " " + (embed.title or "") + " " + " ".join([f.value for f in embed.fields])
+            text = (embed.description or "") + " " + " ".join([f.value for f in embed.fields])
             
-            if "Started playing" in full_text:
-                # 1. FILTER CERDAS: Skip konten YouTube/Playlist
-                is_youtube_content = "youtube" in full_text.lower()
-                is_playlist = any(keyword.lower() in full_text.lower() for keyword in ["Full Album", "Playlist", "Album", "Lagu Pop"])
-                
-                if is_youtube_content or is_playlist:
-                    print("Konten YouTube atau Playlist terdeteksi, skip lirik.")
+            if "Started playing" in text:
+                # Filter YouTube tetap kita jaga biar gak berisik
+                embed_url = embed.url or ""
+                if "youtube.com" in embed_url or "youtu.be" in embed_url:
                     return 
-
-                # 2. PEMERSIH JUDUL SUPER (Buang semua karakter aneh)
-                raw = full_text.split("Started playing")[-1].strip()
-                # Hapus isi dalam (), [], dan hapus teks setelah "by"
-                clean_title = re.sub(r'[\(\[].*?[\)\]]', '', raw)
-                title = clean_title.split(" by ")[0].strip()
+                
+                # Logic awal yang terbukti stabil
+                raw = text.split("Started playing")[-1].strip()
+                title = re.sub(r'\(.*?\)', '', raw).split(" by ")[0].strip()
                 
                 if title != last_played_song:
                     last_played_song = title
                     await message.channel.send(f"Auto-Sync (Playing): {title}")
                     
-                    # Cari lirik di Genius
                     song = genius.search_song(title)
                     if song:
                         embed_lirik = discord.Embed(title=song.title, description=song.lyrics[:2000], color=0x87CEEB)
@@ -61,13 +52,5 @@ async def on_message(message):
                         await message.channel.send("Lirik tidak ketemu.")
     
     await bot.process_commands(message)
-
-@bot.command()
-async def lirik(ctx, *, judul_lagu):
-    song = genius.search_song(judul_lagu)
-    if song:
-        await ctx.send(embed=discord.Embed(title=song.title, description=song.lyrics[:2000], color=0x87CEEB))
-    else:
-        await ctx.send("Lirik tidak ketemu.")
 
 bot.run(TOKEN)

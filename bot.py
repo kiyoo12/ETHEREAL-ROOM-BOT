@@ -28,29 +28,32 @@ async def on_message(message):
         if message.embeds:
             embed = message.embeds[0]
             
-            # CEK PROVIDER: Ini cara paling akurat buat nangkep YouTube
-            # Jockie biasanya naruh provider di embed.provider.name
-            provider_name = (embed.provider.name.lower() if embed.provider and embed.provider.name else "")
+            # Gabung semua sumber teks untuk dicek
+            title_text = embed.title or ""
+            desc_text = embed.description or ""
+            url_text = embed.url or ""
+            provider_name = embed.provider.name.lower() if embed.provider and embed.provider.name else ""
             
-            # Deteksi kalau YouTube
-            is_youtube = "youtube" in provider_name
+            # Gabungkan semuanya dalam satu string untuk pencarian keyword
+            full_content = (title_text + " " + desc_text + " " + url_text + " " + provider_name).lower()
             
-            # Ambil teks buat jaga-jaga kalau provider-nya gak kedeteksi
-            full_text = (embed.description or "") + " " + (embed.title or "") + " " + (embed.url or "")
-            is_youtube_text = "youtube.com" in full_text.lower() or "youtu.be" in full_text.lower()
-            
-            if "Started playing" in full_text:
-                # FILTER: Kalau terdeteksi YouTube, langsung kabur!
-                if is_youtube or is_youtube_text:
-                    print("YouTube terdeteksi via provider/link, skip lirik.")
-                    return 
+            # --- FILTER SUPER GALAK ---
+            # Kalau ada kata 'youtube' di manapun, atau link youtube, langsung STOP
+            if "youtube" in full_content or "youtu.be" in full_content:
+                print("Konten YouTube terdeteksi, skip lirik.")
+                return 
 
-                # PEMERSIH JUDUL
-                raw = full_text.split("Started playing")[-1].strip()
+            # Cek apakah ini pesan "Started playing"
+            # Jockie kadang naro ini di description atau di title
+            if "started playing" in (desc_text.lower() + " " + title_text.lower()):
+                
+                # Bersihin judul (Hapus [], (), dan kata "by")
+                raw = (desc_text if "started playing" in desc_text.lower() else title_text)
+                raw = raw.replace("Started playing", "").replace("started playing", "").strip()
                 clean_title = re.sub(r'[\(\[].*?[\)\]]', '', raw)
                 title = clean_title.split(" by ")[0].strip()
                 
-                if title != last_played_song:
+                if title and title != last_played_song:
                     last_played_song = title
                     await message.channel.send(f"Auto-Sync (Playing): {title}")
                     

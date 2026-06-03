@@ -17,51 +17,35 @@ genius = lyricsgenius.Genius(GENIUS_TOKEN)
 last_played_song = ""
 
 @bot.event
-async def on_ready():
-    print(f'Bot Ethereal sudah ON!')
-
-@bot.event
 async def on_message(message):
     global last_played_song
     
     if message.author.name == "Jockie Music" and message.channel.id == TARGET_CHANNEL_ID:
         if message.embeds:
             embed = message.embeds[0]
+            desc = embed.description or ""
+            title = embed.title or ""
+            full_text = desc + " " + title
             
-            # Gabung semua sumber teks untuk dicek
-            title_text = embed.title or ""
-            desc_text = embed.description or ""
-            url_text = embed.url or ""
-            provider_name = embed.provider.name.lower() if embed.provider and embed.provider.name else ""
-            
-            # Gabungkan semuanya dalam satu string untuk pencarian keyword
-            full_content = (title_text + " " + desc_text + " " + url_text + " " + provider_name).lower()
-            
-            # --- FILTER SUPER GALAK ---
-            # Kalau ada kata 'youtube' di manapun, atau link youtube, langsung STOP
-            if "youtube" in full_content or "youtu.be" in full_content:
-                print("Konten YouTube terdeteksi, skip lirik.")
-                return 
+            if "started playing" in full_text.lower():
+                raw = full_text.split("Started playing")[-1].strip()
+                
+                # FILTER GALAK BERDASARKAN JUDUL
+                # Tambahin kata-kata yang sering muncul di video YouTube kamu
+                banned = ["Official Video", "Guna Warma", "Nosstress", "Full Album", "Tanpa Iklan"]
+                if any(b.lower() in raw.lower() for b in banned):
+                    return # Langsung diam kalau kena filter
 
-            # Cek apakah ini pesan "Started playing"
-            # Jockie kadang naro ini di description atau di title
-            if "started playing" in (desc_text.lower() + " " + title_text.lower()):
+                # PROSES LIRIK
+                clean_title = re.sub(r'[\(\[].*?[\)\]]', '', raw).split(" by ")[0].strip()
                 
-                # Bersihin judul (Hapus [], (), dan kata "by")
-                raw = (desc_text if "started playing" in desc_text.lower() else title_text)
-                raw = raw.replace("Started playing", "").replace("started playing", "").strip()
-                clean_title = re.sub(r'[\(\[].*?[\)\]]', '', raw)
-                title = clean_title.split(" by ")[0].strip()
-                
-                if title and title != last_played_song:
-                    last_played_song = title
-                    await message.channel.send(f"Auto-Sync (Playing): {title}")
+                if clean_title != last_played_song:
+                    last_played_song = clean_title
+                    await message.channel.send(f"Auto-Sync (Playing): {clean_title}")
                     
-                    song = genius.search_song(title)
+                    song = genius.search_song(clean_title)
                     if song:
-                        embed_lirik = discord.Embed(title=song.title, description=song.lyrics[:2000], color=0x87CEEB)
-                        embed_lirik.set_footer(text=f"Artist: {song.artist}")
-                        await message.channel.send(embed=embed_lirik)
+                        await message.channel.send(embed=discord.Embed(title=song.title, description=song.lyrics[:2000], color=0x87CEEB))
                     else:
                         await message.channel.send("Lirik tidak ketemu.")
     

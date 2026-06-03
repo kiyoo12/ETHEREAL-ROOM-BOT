@@ -40,22 +40,22 @@ async def on_message(message):
                     last_played_song = title
                     await message.channel.send(f"Auto-Sync (Playing): {title}")
                     
-                    # 1. Bersihkan judulnya dulu sampai kinclong
+                    # 1. Bersihkan judul
                     title = title.replace("*", "").replace("[", "").replace("]", "").strip()
                     
-                    # --- FITUR STATUS ACAK (RANDOMIZER) ---
+                    # 2. Set status "Listening to" (biar masuk kotak Jockie Music)
+                    activity = discord.Activity(type=discord.ActivityType.listening, name=title)
+                    await bot.change_presence(activity=activity)
+                    
+                    # 3. Kirim Mood lewat chat biar tetep dapet vibe-nya
                     moods = [
-                        "Feeling: {title} 🎧",
-                        "Currently loving: {title} ✨",
-                        "Deep in: {title} 🌌",
-                        "Thinking about: {title} 💭",
-                        "Floating with: {title} ☁️",
-                        "Healing with: {title} 🩹",
-                        "Drowning in: {title} 🌊",
-                        "Lost in: {title} 🌙"
+                        "Feeling: {title} 🎧", "Currently loving: {title} ✨", 
+                        "Deep in: {title} 🌌", "Thinking about: {title} 💭",
+                        "Floating with: {title} ☁️", "Healing with: {title} 🩹",
+                        "Drowning in: {title} 🌊", "Lost in: {title} 🌙"
                     ]
                     status_text = random.choice(moods).format(title=title)
-                    await bot.change_presence(activity=discord.CustomActivity(name=status_text))
+                    await message.channel.send(f"Status: *{status_text}*")
                     
                     # --- LIRIK BAHASA INGGRIS ---
                     song = genius.search_song(title)

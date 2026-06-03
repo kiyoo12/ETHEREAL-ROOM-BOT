@@ -19,8 +19,9 @@ last_played_song = ""
 @bot.event
 async def on_ready():
     print(f'Bot Ethereal sudah ON!')
-    # Set status awal
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name="musik..."))
+    # Ganti bagian activity di dalam on_message jadi ini:
+activity = discord.CustomActivity(name=f"Lagi asik dengerin: {title}")
+await bot.change_presence(activity=activity)
 
 @bot.event
 async def on_message(message):

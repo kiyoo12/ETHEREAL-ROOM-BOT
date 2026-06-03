@@ -5,9 +5,11 @@ import os
 import re
 
 # --- CONFIG ---
+# Ambil dari Environment Variables (Setting di Railway)
 TOKEN = os.environ.get('DISCORD_TOKEN')
 GENIUS_TOKEN = os.environ.get('GENIUS_ACCESS_TOKEN')
-TARGET_CHANNEL_ID = 1510507327785144470 # ID channel lu
+# Pastikan ID channel di Railway juga angka ya
+TARGET_CHANNEL_ID = int(os.environ.get('TARGET_CHANNEL_ID', 0))
 
 # Setup Intents
 intents = discord.Intents.default()
@@ -33,7 +35,15 @@ async def on_message(message):
             text = (embed.description or "") + " " + " ".join([f.value for f in embed.fields])
             
             if "Started playing" in text:
-                # Bersihin nama lagu
+                # 1. Cek URL embed untuk deteksi platform
+                embed_url = embed.url or ""
+                
+                # 2. Logic filter YouTube (Skip kalau YouTube)
+                if "youtube.com" in embed_url or "youtu.be" in embed_url:
+                    print("YouTube terdeteksi, skip lirik.")
+                    return 
+                
+                # 3. Bersihin nama lagu
                 raw = text.split("Started playing")[-1].strip()
                 title = re.sub(r'\(.*?\)', '', raw).split(" by ")[0].strip()
                 
@@ -49,6 +59,8 @@ async def on_message(message):
                         embed_lirik = discord.Embed(title=song.title, description=song.lyrics[:2000], color=0x87CEEB)
                         embed_lirik.set_footer(text=f"Artist: {song.artist}")
                         await message.channel.send(embed=embed_lirik)
+                    else:
+                        await message.channel.send("Lirik tidak ketemu.")
     
     # WAJIB: Biar command !lirik tetep bisa dipake
     await bot.process_commands(message)

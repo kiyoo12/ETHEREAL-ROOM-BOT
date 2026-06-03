@@ -26,17 +26,15 @@ async def on_ready():
 async def on_message(message):
     global last_played_song
     
-    # Debug log
-    if message.author.name == "Jockie Music":
-        print(f"Bot denger pesan dari Jockie: {message.content[:20]}") 
-
     if message.author.name == "Jockie Music" and message.channel.id == TARGET_CHANNEL_ID:
         if message.embeds:
             embed = message.embeds[0]
-            text = (embed.description or "") + " " + " ".join([f.value for f in embed.fields])
+            # Gabungkan semua teks dari embed supaya bot lebih peka
+            full_text = f"{embed.title or ''} {embed.description or ''} " + " ".join([f.value for f in embed.fields])
             
-            if "Started playing" in text:
-                raw = text.split("Started playing")[-1].strip()
+            if "Started playing" in full_text:
+                # Bersihkan teks untuk ambil judul lagu
+                raw = full_text.split("Started playing")[-1].strip()
                 title = re.sub(r'[\(\[].*?[\)\]]', '', raw).split(" by ")[0].strip()
                 title = title.replace("*", "").replace("[", "").replace("]", "").strip()
                 
@@ -46,7 +44,7 @@ async def on_message(message):
                     # 1. Auto-Sync Message
                     await message.channel.send(f"Auto-Sync (Playing): **{title}**")
                     
-                    # 2. Update status ke "Listening to"
+                    # 2. Update status "Listening to"
                     activity = discord.Activity(type=discord.ActivityType.listening, name=title)
                     await bot.change_presence(activity=activity)
                     
@@ -60,7 +58,7 @@ async def on_message(message):
                     status_text = random.choice(moods).format(title=title)
                     await message.channel.send(f"Status: *{status_text}*")
                     
-                    # 4. Cari lirik
+                    # 4. Cari dan kirim lirik
                     song = genius.search_song(title)
                     if song:
                         embed_lirik = discord.Embed(title=song.title, description=song.lyrics[:2000], color=0x87CEEB)

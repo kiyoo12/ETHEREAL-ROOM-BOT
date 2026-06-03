@@ -3,9 +3,25 @@ from discord.ext import commands
 import lyricsgenius
 import os
 import re
-import random # Jangan lupa import ini di atas
+import random
 
-# ... (CONFIG DAN SETUP BOT SAMA SEPERTI TADI) ...
+# --- CONFIG ---
+TOKEN = os.environ.get('DISCORD_TOKEN')
+GENIUS_TOKEN = os.environ.get('GENIUS_ACCESS_TOKEN')
+TARGET_CHANNEL_ID = int(os.environ.get('TARGET_CHANNEL_ID', 0))
+
+# --- SETUP BOT ---
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix='!', intents=intents)
+genius = lyricsgenius.Genius(GENIUS_TOKEN)
+
+last_played_song = ""
+
+@bot.event
+async def on_ready():
+    print(f'Bot Ethereal sudah ON!')
+    await bot.change_presence(activity=None)
 
 @bot.event
 async def on_message(message):
@@ -54,4 +70,4 @@ async def on_message(message):
     
     await bot.process_commands(message)
 
-# ... (bot.run(TOKEN)) ...
+bot.run(TOKEN)

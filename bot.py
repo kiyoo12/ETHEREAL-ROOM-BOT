@@ -59,10 +59,20 @@ async def on_message(message):
                     status_text = random.choice(moods).format(title=title)
                     await message.channel.send(f"Status: *{status_text}*")
                     
-                    # 4. Cari lirik
+                  # 4. Cari lirik
                     song = genius.search_song(title)
                     if song:
-                        embed_lirik = discord.Embed(title=song.title, description=song.lyrics[:2000], color=0x87CEEB)
+                        vibe_colors = [
+                            0x87CEEB, 0xD8BFD8, 0xF08080, 
+                            0x778899, 0xFFE4B5, 0xB0C4DE
+                        ]
+                        random_color = random.choice(vibe_colors)
+                        
+                        embed_lirik = discord.Embed(
+                            title=song.title, 
+                            description=song.lyrics[:2000], 
+                            color=random_color
+                        )
                         embed_lirik.set_footer(text=f"Artist: {song.artist}")
                         await message.channel.send(embed=embed_lirik)
                     else:

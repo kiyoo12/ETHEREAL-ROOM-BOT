@@ -18,7 +18,7 @@ last_played_song = ""
 
 @bot.event
 async def on_ready():
-    print(f'Bot Ethereal sudah ON!')
+    print(f'Bot Ethereal Ready!')
 
 @bot.event
 async def on_message(message):
@@ -44,7 +44,7 @@ async def on_message(message):
                         embed_lirik.set_footer(text=f"Artist: {song.artist}")
                         await message.channel.send(embed=embed_lirik)
                     else:
-                        await message.channel.send("Lirik tidak ketemu.")
+                        await message.channel.send("Lyrics not found")
     
     await bot.process_commands(message)
 
